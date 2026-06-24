@@ -12,3 +12,9 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "streamlit>=1.58.0",
 ]
+
+[tool.uv.workspace]
+members = [
+    "apps/api",
+    "apps/chatbot_ui",
+]
