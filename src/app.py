@@ -70,6 +70,5 @@ if prompt := st.chat_input("Hello! How can I assist you today?"):
 
     with st.chat_message("assistant"):
         answer = run_llm(st.session_state.provider, st.session_state.model_name, st.session_state.messages)
-        #answer = run_llm(st.session_state.provider, st.session_state.model_name, st.session_state.messages)
         st.write(answer)
     st.session_state.messages.append({"role": "assistant", "content": answer})
