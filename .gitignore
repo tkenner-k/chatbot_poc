@@ -67,4 +67,7 @@ MANIFEST
 # ruff
 .ruff_cache/
 
-
+#data and vector data base
+# Local data
+qdrant_data/
+data/
