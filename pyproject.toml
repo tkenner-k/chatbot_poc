@@ -22,5 +22,6 @@ members = [
 
 [dependency-groups]
 dev = [
+    "langsmith>=0.9.3",
     "qdrant-client>=1.18.0",
 ]
