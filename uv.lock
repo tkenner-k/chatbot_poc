@@ -609,8 +609,6 @@ wheels = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
 name = "dataclasses-json"
 version = "0.6.7"
 source = { registry = "https://pypi.org/simple" }
@@ -649,7 +647,6 @@ wheels = [
 ]
 
 [[package]]
->>>>>>> sprint0
 name = "debugpy"
 version = "1.8.21"
 source = { registry = "https://pypi.org/simple" }
