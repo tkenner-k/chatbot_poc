@@ -455,7 +455,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "matplotlib" },
+    { name = "instructor" },
     { name = "langchain-community" },
     { name = "langchain-openai" },
     { name = "langsmith" },
@@ -476,11 +476,12 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "qdrant-client", specifier = ">=1.18.0" }]
 dev = [
+    { name = "instructor", specifier = ">=1.15.4" },
     { name = "langchain-community", specifier = ">=0.4.0,<0.4.2" },
     { name = "langchain-openai", specifier = ">=1.1.9" },
     { name = "langsmith", specifier = ">=0.8.16" },
+    { name = "langsmith", specifier = ">=0.9.3" },
     { name = "matplotlib", specifier = ">=3.11.0" },
     { name = "qdrant-client", specifier = ">=1.18.0" },
     { name = "ragas", specifier = ">=0.4.3" },
