@@ -476,9 +476,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-<<<<<<< HEAD
 dev = [{ name = "qdrant-client", specifier = ">=1.18.0" }]
-=======
 dev = [
     { name = "langchain-community", specifier = ">=0.4.0,<0.4.2" },
     { name = "langchain-openai", specifier = ">=1.1.9" },
@@ -487,7 +485,6 @@ dev = [
     { name = "qdrant-client", specifier = ">=1.18.0" },
     { name = "ragas", specifier = ">=0.4.3" },
 ]
->>>>>>> sprint0
 
 [[package]]
 name = "chatbot-ui"
@@ -612,8 +609,6 @@ wheels = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
 name = "dataclasses-json"
 version = "0.6.7"
 source = { registry = "https://pypi.org/simple" }
@@ -652,7 +647,6 @@ wheels = [
 ]
 
 [[package]]
->>>>>>> sprint0
 name = "debugpy"
 version = "1.8.21"
 source = { registry = "https://pypi.org/simple" }
