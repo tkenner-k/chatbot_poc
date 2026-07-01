@@ -756,8 +756,6 @@ wheels = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
 name = "filelock"
 version = "3.29.4"
 source = { registry = "https://pypi.org/simple" }
@@ -767,7 +765,6 @@ wheels = [
 ]
 
 [[package]]
->>>>>>> sprint0
 name = "fonttools"
 version = "4.63.0"
 source = { registry = "https://pypi.org/simple" }
@@ -809,8 +806,6 @@ wheels = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
 name = "frozenlist"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -914,7 +909,6 @@ http = [
 ]
 
 [[package]]
->>>>>>> sprint0
 name = "gitdb"
 version = "4.0.12"
 source = { registry = "https://pypi.org/simple" }
@@ -1503,8 +1497,6 @@ wheels = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
 name = "kiwisolver"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1797,7 +1789,6 @@ wheels = [
 ]
 
 [[package]]
->>>>>>> sprint0
 name = "markupsafe"
 version = "3.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1861,8 +1852,6 @@ wheels = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
 name = "marshmallow"
 version = "3.26.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1875,7 +1864,6 @@ wheels = [
 ]
 
 [[package]]
->>>>>>> sprint0
 name = "matplotlib"
 version = "3.11.0"
 source = { registry = "https://pypi.org/simple" }
