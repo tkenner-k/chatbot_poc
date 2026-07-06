@@ -5,8 +5,6 @@ from groq import Groq
 from api.core.config import config
 
 
-
-
 def run_llm(provider, model_name, messages, max_tokens = 500):
     if provider == "OpenAI":
         client = OpenAI(api_key=config.OPENAI_API_KEY)
