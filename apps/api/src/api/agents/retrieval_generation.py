@@ -120,7 +120,7 @@ def build_prompt(preprocessed_context, question):
     )
 
     return prompt
-
+ 
 
 
 @traceable(
