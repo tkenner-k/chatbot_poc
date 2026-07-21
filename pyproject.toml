@@ -33,4 +33,5 @@ dev = [
     "ragas>=0.4.3",
     "instructor>=1.15.4",
     "cohere>=7.0.5",
+    "langgraph>=1.2.2",
 ]
