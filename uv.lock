@@ -194,6 +194,7 @@ name = "api"
 version = "0.1.0"
 source = { editable = "apps/api" }
 dependencies = [
+    { name = "cohere" },
     { name = "fastapi" },
     { name = "groq" },
     { name = "instructor" },
@@ -208,6 +209,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cohere", specifier = ">=7.0.5" },
     { name = "fastapi", specifier = ">=0.138.0" },
     { name = "groq", specifier = ">=1.4.0" },
     { name = "instructor", specifier = ">=1.15.4" },

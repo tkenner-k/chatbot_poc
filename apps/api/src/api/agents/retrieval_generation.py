@@ -1,10 +1,11 @@
 import openai
+import cohere
 from qdrant_client import QdrantClient
 from langsmith import traceable, get_current_run_tree
 import instructor
 from pydantic import BaseModel, Field
-from qdrant_client import models
 from qdrant_client.models import Filter, FieldCondition, MatchValue, Prefetch, Document
+from qdrant_client import models
 
 from api.agents.utils.prompt_management import prompt_template_config
 
@@ -42,36 +43,42 @@ def get_embedding(text, model="text-embedding-3-small"):
     return response.data[0].embedding
 
 
-
 @traceable(
     name="retrieve_data",
     run_type="retriever"
 )
-
-def retrieve_data(query, qdrant_client, k=5):
+def retrieve_data(query, qdrant_client, k=5, hybrid=True):
 
     query_embedding = get_embedding(query)
 
-    results = qdrant_client.query_points(
-        collection_name="Amazon-items-collection-01-hybrid-search",
-        prefetch=[
-            Prefetch(
-                query=query_embedding,
-                using="text-embedding-3-small",
-                limit=20
-            ),
-            Prefetch(
-                query=Document(
-                    text=query,
-                    model="qdrant/bm25"
+    if hybrid:
+        results = qdrant_client.query_points(
+            collection_name="Amazon-items-collection-01-hybrid-search",
+            prefetch=[
+                Prefetch(
+                    query=query_embedding,
+                    using="text-embedding-3-small",
+                    limit=20
                 ),
-                using="bm25",
-                limit=20
-            )
-        ],
-        query=models.RrfQuery(rrf=models.Rrf(weights=[3,1])),
-        limit=k
-    )
+                Prefetch(
+                    query=Document(
+                        text=query,
+                        model="qdrant/bm25"
+                    ),
+                    using="bm25",
+                    limit=20
+                )
+            ],
+            query=models.RrfQuery(rrf=models.Rrf(weights=[3,1])),
+            limit=k
+        )
+    else:
+        results = qdrant_client.query_points(
+            collection_name="Amazon-items-collection-01-hybrid-search",
+            query=query_embedding,
+            using="text-embedding-3-small",
+            limit=k
+        )
 
     retrieved_context_ids = []
     retrieved_context = []
@@ -89,6 +96,31 @@ def retrieve_data(query, qdrant_client, k=5):
         "retrieved_context": retrieved_context,
         "similarity_scores": similarity_scores,
         "retrieved_context_ratings": retrieved_context_ratings
+    }
+
+
+@traceable(
+    name="rerank_data",
+    run_type="tool"
+)
+def rerank_data(query, context, top_k=5):
+
+    cohere_client = cohere.ClientV2()
+
+    response = cohere_client.rerank(
+        model="rerank-v4.0-pro",
+        query=query,
+        documents=context["retrieved_context"],
+        top_n=top_k
+    )
+
+    order = [result.index for result in response.results]
+
+    return {
+        "retrieved_context_ids": [context["retrieved_context_ids"][i] for i in order],
+        "retrieved_context": [context["retrieved_context"][i] for i in order],
+        "similarity_scores": [context["similarity_scores"][i] for i in order],
+        "retrieved_context_ratings": [context["retrieved_context_ratings"][i] for i in order]
     }
 
 
@@ -120,7 +152,6 @@ def build_prompt(preprocessed_context, question):
     )
 
     return prompt
- 
 
 
 @traceable(
@@ -160,9 +191,18 @@ def generate_answer(prompt):
 @traceable(
     name="rag_pipeline",
 )
-def rag_pipeline(question, qdrant_client, top_k=5):
+def rag_pipeline(question, qdrant_client, top_k=5, hybrid=True, rerank=False, retrieve_k=20):
 
-    retrieved_context = retrieve_data(question, qdrant_client, k=top_k)
+    retrieved_context = retrieve_data(
+        question,
+        qdrant_client,
+        k=retrieve_k if rerank else top_k,
+        hybrid=hybrid
+    )
+
+    if rerank:
+        retrieved_context = rerank_data(question, retrieved_context, top_k=top_k)
+
     preprocessed_context = process_context(retrieved_context)
     prompt = build_prompt(preprocessed_context, question)
     answer = generate_answer(prompt)
