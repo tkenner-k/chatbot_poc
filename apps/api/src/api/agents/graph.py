@@ -2,12 +2,14 @@ from pydantic import BaseModel, Field
 from typing import Annotated, List, Any
 from operator import add
 from api.agents.agents import RAGUsedContext, agent_node, intent_router_node
-from api.agents.tools import get_formatted_item_context
+from api.agents.tools import get_formatted_item_context, get_formatted_reviews_context
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
+from langgraph.checkpoint.postgres import PostgresSaver
+import json
 
 
 class State(BaseModel):
@@ -79,52 +81,59 @@ graph = workflow.compile()
 
 ### Agent Execution
 
-def run_agent(question: str) -> dict:
+def agent_wrapper(question: str, thread_id: str) -> dict:
+
+    qdrant_client = QdrantClient(url="http://qdrant:6333")
 
     initial_state = {
         "messages": [HumanMessage(content=question)],
         "iteration": 0,
     }
 
-    result = graph.invoke(initial_state)
-
-    return result
-
-
-def agent_wrapper(question: str) -> dict:
-
-    qdrant_client = QdrantClient(url="http://qdrant:6333")
-
-    result = run_agent(question)
-
-    used_context = []
-
-    for item in result.get("references", []):
-        payload = qdrant_client.scroll(
-            collection_name="Amazon-items-collection-01-hybrid-search",
-            with_payload=True,
-            with_vectors=False,
-            scroll_filter=Filter(
-                must=[
-                    FieldCondition(
-                        key="parent_asin",
-                        match=MatchValue(value=item.get("id"))
-                    )
-                ]
-            )
-        )[0][0].payload
-        image_url = payload.get("image", "")
-        price = payload.get("price")
-        if image_url:
-            used_context.append(
-                {
-                    "image_url": image_url,
-                    "price": price,
-                    "description": item.get("description")
-                }
-            )
-
-    return {
-        "answer": result.get("answer", ""),
-        "used_context": used_context
+    config = {
+        "configurable": {
+            "thread_id": thread_id
+        }
     }
+
+    with PostgresSaver.from_conn_string(
+        "postgresql://langgraph_user:langgraph_password@postgres:5432/langgraph_db"
+    ) as checkpointer:
+
+        graph = workflow.compile(checkpointer=checkpointer)
+
+        result = graph.invoke(initial_state, config)
+
+        used_context = []
+
+        for item in result.get("references", []):
+            payload = qdrant_client.scroll(
+                collection_name="Amazon-items-collection-01-hybrid-search",
+                with_payload=True,
+                with_vectors=False,
+                scroll_filter=Filter(
+                    must=[
+                        FieldCondition(
+                            key="parent_asin",
+                            match=MatchValue(value=item.get("id"))
+                        )
+                    ]
+                )
+            )[0][0].payload
+
+            image_url = payload.get("image", "")
+            price = payload.get("price")
+
+            if image_url:
+                used_context.append(
+                    {
+                        "image_url": image_url,
+                        "price": price,
+                        "description": item.get("description"),
+                    }
+                )
+
+        return {
+            "answer": result.get("answer", ""),
+            "used_context": used_context,
+        }
