@@ -170,12 +170,13 @@ Returns:
     return formatted_context
 
 
-### Reviews metadata retrieval tool
+### Items metadata retrieval tool.  
 
 @traceable(
     name="retrieve_prefiltered_reviews_data",
     run_type="retriever"
 )
+
 def retrieve_prefiltered_reviews_data(query, parent_asins, qdrant_client, k=5):
 
     query_embedding = get_embedding(query)

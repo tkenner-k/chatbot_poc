@@ -19,6 +19,8 @@ dependencies = [
 members = [
     "apps/api",
     "apps/chatbot_ui",
+    "apps/items_mcp_server",
+    "apps/reviews_mcp_server",
 ]
 
 
@@ -36,4 +38,6 @@ dev = [
     "cohere>=7.0.5",
     "langgraph>=1.2.2",
     "langgraph-checkpoint-postgres>=3.1.0",
+    "fastmcp>=3.4.4",
+    "langchain-mcp-adapters>=0.3.0",
 ]

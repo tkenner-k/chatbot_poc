@@ -19,6 +19,7 @@ class State(BaseModel):
     answer: str = ""
     final_answer: bool = False
     references: list[RAGUsedContext] = []
+    trace_id: str = ""
 
 
 ### Edges
@@ -47,7 +48,7 @@ def intent_router_conditional_edges(state: State) -> str:
 
 workflow = StateGraph(State)
 
-tools = [get_formatted_item_context]
+tools = [get_formatted_item_context, get_formatted_reviews_context]
 tool_node = ToolNode(tools)
 
 workflow.add_node("tool_node", tool_node)
@@ -136,4 +137,5 @@ def agent_wrapper(question: str, thread_id: str) -> dict:
         return {
             "answer": result.get("answer", ""),
             "used_context": used_context,
+            "trace_id": result.get("trace_id", "")
         }
