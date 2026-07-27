@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 from api.api.models import AgentRequest, AgentResponse, RAGUsedContext, FeedbackRequest, FeedbackResponse
 from api.api.processors.submit_feedback import submit_feedback
-from api.agents.graph import agent_wrapper
+from api.agents.graph import agent_stream_wrapper
 import logging
 
 logging.basicConfig(
@@ -17,16 +18,12 @@ feedback_router = APIRouter()
 def chat(
     request: Request,
     payload: AgentRequest
-) -> AgentResponse:
+) -> StreamingResponse:
 
-    result = agent_wrapper(payload.query, payload.thread_id)
-
-    return AgentResponse(
-        answer=result["answer"], 
-        used_context=[RAGUsedContext(**item) for item in result["used_context"]],
-        trace_id=result["trace_id"]
+    return StreamingResponse(
+        agent_stream_wrapper(payload.query, payload.thread_id), 
+        media_type="text/event-stream"
     )
-
 
 @feedback_router.post("/")
 def send_feedback(
@@ -40,7 +37,6 @@ def send_feedback(
     return FeedbackResponse(
         message="Feedback submitted successfully."
     )
-
 
 api_router = APIRouter()
 api_router.include_router(rag_router, prefix="/agent", tags=["agent"])
