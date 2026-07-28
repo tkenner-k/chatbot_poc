@@ -41,4 +41,5 @@ dev = [
     "fastmcp>=3.4.4",
     "langchain-mcp-adapters>=0.3.0",
     "tavily-python>=0.7.26",
+    "psycopg2-binary>=2.9.12",
 ]
