@@ -42,4 +42,8 @@ dev = [
     "langchain-mcp-adapters>=0.3.0",
     "tavily-python>=0.7.26",
     "psycopg2-binary>=2.9.12",
+    "litellm>=1.95.0",
+    "langchain-litellm>=0.7.0",
+    "google-adk>=2.6.2",
+    "a2a-sdk>=1.1.2",
 ]
