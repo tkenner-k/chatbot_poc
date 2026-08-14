@@ -30,13 +30,14 @@ class FinalQnAAgentResponse(BaseModel):
 class FinalAgentResponse(BaseModel):
 
     answer: str = Field(description="Answer to the question")
+    next_agent_task: str = Field(description="The task to be performed by the next agent")
 
 
 ### Coordinator Agent Response Model
 
 class Plan(BaseModel):
     next_agent: str = Field(description="The next agent to invoke")
-
+    next_agent_task: str = Field(description="The task to be performed by the next agent")
 
 
 ### QnA Agent Node
@@ -130,7 +131,8 @@ def shopping_cart_agent(state) -> dict:
     response = llm_with_tools.invoke(
         [
             SystemMessage(content=prompt),
-            *state.messages
+            AIMessage(content=state.coordinator_agent.next_agent_task),
+            *state.shopping_cart_agent.messages
         ]
     )
 
@@ -149,10 +151,11 @@ def shopping_cart_agent(state) -> dict:
     response = postprocessed_response.get("response")
 
     return {
-        "messages": [response],
+        "messages": [response] if final_answer else [],
         "shopping_cart_agent": {
             "iteration": state.shopping_cart_agent.iteration + 1,
-            "final_answer": final_answer
+            "final_answer": final_answer,
+            "messages": [response]
         },
         "answer": answer
     }
@@ -187,7 +190,8 @@ def warehouse_manager_agent(state) -> dict:
     response = llm_with_tools.invoke(
         [
             SystemMessage(content=prompt),
-            *state.messages
+            AIMessage(content=state.coordinator_agent.next_agent_task),
+            *state.warehouse_manager_agent.messages
         ]
     )
 
@@ -206,10 +210,11 @@ def warehouse_manager_agent(state) -> dict:
     response = postprocessed_response.get("response")
 
     return {
-        "messages": [response],
+        "messages": [response] if final_answer else [],
         "warehouse_manager_agent": {
             "iteration": state.warehouse_manager_agent.iteration + 1,
-            "final_answer": final_answer
+            "final_answer": final_answer,
+            "messages": [response]
         },
         "answer": answer
     }
@@ -262,11 +267,14 @@ def coordinator_agent(state) -> dict:
     final_answer = False
     answer = ""
     next_agent = ""
+    next_agent_task = ""
 
     if len(response.tool_calls) > 0:
         if response.tool_calls[0].get("name") == "Plan":
             next_agent = response.tool_calls[0].get("args").get("next_agent")
-            response = AIMessage(content=f"[coordinator_agent decision] Next agent: {next_agent}")
+            next_agent_task = response.tool_calls[0].get("args").get("next_agent_task")
+            response = AIMessage(content=f"[coordinator_agent decision] Next agent: {next_agent}. Next agent task: {next_agent_task}")
+    
         else:
             postprocessed_response = postprocess_response(response, "FinalAgentResponse")
 
@@ -279,7 +287,8 @@ def coordinator_agent(state) -> dict:
         "coordinator_agent": {
             "iteration": state.coordinator_agent.iteration + 1,
             "final_answer": final_answer,
-            "next_agent": next_agent
+            "next_agent": next_agent,
+            "next_agent_task": next_agent_task
         },
         "answer": answer,
         "trace_id": trace_id
