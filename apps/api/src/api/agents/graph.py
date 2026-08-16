@@ -12,6 +12,9 @@ from api.agents.tools import (
     check_warehouse_availability, 
     reserve_warehouse_items
 )
+
+from api.agents.guardrails import redact_product_id
+
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
@@ -200,6 +203,8 @@ workflow.add_node("coordinator_agent", coordinator_agent)
 
 workflow.add_node("hitl_add_to_cart", hitl_add_to_cart)
 
+workflow.add_node("redact_product_id", redact_product_id)
+
 workflow.add_edge(START, "coordinator_agent")
 
 workflow.add_conditional_edges(
@@ -209,7 +214,7 @@ workflow.add_conditional_edges(
         "product_qna_agent": "product_qna_agent",
         "shopping_cart_agent": "shopping_cart_agent",
         "warehouse_manager_agent": "warehouse_manager_agent",
-        "end": END
+        "end": "redact_product_id"
     }
 )
 
@@ -244,6 +249,7 @@ workflow.add_conditional_edges(
 workflow.add_edge("product_qna_agent_tool_node", "product_qna_agent")
 workflow.add_edge("shopping_cart_agent_tool_node", "shopping_cart_agent")
 workflow.add_edge("warehouse_manager_agent_tool_node", "warehouse_manager_agent")
+workflow.add_edge("redact_product_id", END)
 
 ### Agent Execution
 

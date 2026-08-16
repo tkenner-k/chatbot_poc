@@ -26,13 +26,12 @@ services:
   qdrant:
     image: qdrant/qdrant
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - 6333:6333
+      - 6334:6334
     volumes:
       - ./qdrant_data:/qdrant/storage:z
     restart: unless-stopped
 
-   
   postgres:
     image: postgres:16-alpine
     ports:
@@ -44,7 +43,8 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     restart: unless-stopped
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data  
+      - ./postgres_data:/var/lib/postgresql/data
+
 
   # items_mcp_server:
   #   build:
@@ -65,4 +65,31 @@ services:
   #     - 8002:8000
   #   env_file:
   #     - .env
-  #   restart: unless-stopped  
+  #   restart: unless-stopped
+
+  litellm:
+    image: docker.litellm.ai/berriai/litellm-database:latest
+    ports:
+      - 4000:4000
+    environment:
+      LITELLM_MASTER_KEY: sk-1234
+      LITELLM_SALT_KEY: sk-XXXXXXXXXXXXXXXX
+      DATABASE_URL: postgresql://litellm:litellm@db:5432/litellm
+      STORE_MODEL_IN_DB: "True"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm
+      POSTGRES_DB: litellm
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ./postgres_data_litellm:/var/lib/postgresql/data

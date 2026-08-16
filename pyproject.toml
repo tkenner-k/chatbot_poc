@@ -46,4 +46,5 @@ dev = [
     "langchain-litellm>=0.7.0",
     "google-adk>=2.6.2",
     "a2a-sdk>=1.1.2",
+    "guardrails-ai>=0.11.0",
 ]

@@ -10,6 +10,14 @@ from api.agents.utils.prompt_management import prompt_template_config
 from api.agents.utils.utils import postprocess_response
 from api.agents.tools import get_formatted_item_context, get_formatted_reviews_context, get_shopping_cart, remove_from_cart, add_to_shopping_cart, check_warehouse_availability, reserve_warehouse_items
 from typing import List
+from langchain_litellm import ChatLiteLLM
+
+
+### Global Agent Configs
+MAX_ITERATIONS_PRODUCT_QNA = 5
+MAX_ITERATIONS_SHOPPING_CART = 4
+MAX_ITERATIONS_WAREHOUSE_MANAGER = 4
+MAX_ITERATIONS_COORDINATOR = 6
 
 
 ### QnA Agent Response Model
@@ -30,7 +38,6 @@ class FinalQnAAgentResponse(BaseModel):
 class FinalAgentResponse(BaseModel):
 
     answer: str = Field(description="Answer to the question")
-    next_agent_task: str = Field(description="The task to be performed by the next agent")
 
 
 ### Coordinator Agent Response Model
@@ -50,36 +57,39 @@ class Plan(BaseModel):
         "ls_model_name": "gpt-5.4-mini"
     }
 )
-def product_qna_agent(state) -> dict:
-    
-    template = prompt_template_config("api/agents/prompts/qna_agent.yaml", "qna_agent")
+def product_qna_agent(state, models=["gpt-5.4-mini", "groq/llama-3.3-70b-versatile"]) -> dict:
 
-    prompt = template.render()
+    prompts = {}
+    for model in models:
+        prompts[model] = prompt_template_config("api/agents/prompts/qna_agent.yaml", model).render()
 
-    llm = ChatOpenAI(
-        model="gpt-5.4-mini",
-        reasoning_effort="low",
-        use_responses_api=True
-    )
-    llm_with_tools = llm.bind_tools(
-        [get_formatted_item_context, get_formatted_reviews_context, FinalQnAAgentResponse],
-        tool_choice="required"
-    )
+    if state.product_qna_agent.iteration == MAX_ITERATIONS_PRODUCT_QNA:
+        tools = [FinalQnAAgentResponse]
+    else:
+        tools = [get_formatted_item_context, get_formatted_reviews_context, FinalQnAAgentResponse]
 
-    response = llm_with_tools.invoke(
-        [
-            SystemMessage(content=prompt),
-            *state.messages
-        ]
-    )
+    for model in models:
+        try:
+            llm = ChatLiteLLM(
+                model=model,
+                reasoning_effort="medium",
+                use_responses_api=True
+            )
+            llm_with_tools = llm.bind_tools(
+                tools,
+                tool_choice="required"
+            )
 
-    current_run = get_current_run_tree()
-    if current_run:
-        current_run.metadata["usage_metadata"] = {
-            "input_tokens": response.usage_metadata["input_tokens"],
-            "output_tokens": response.usage_metadata["output_tokens"],
-            "total_tokens": response.usage_metadata["total_tokens"],
-        }
+            response = llm_with_tools.invoke(
+                [
+                    SystemMessage(content=prompts[model]),
+                    *state.messages
+                ]
+            )
+            break
+        except Exception as e:
+            print(f"Error with model {model}: {e}")
+            continue
 
     postprocessed_response = postprocess_response(response, "FinalQnAAgentResponse", "product_qna_agent")
 
@@ -109,40 +119,43 @@ def product_qna_agent(state) -> dict:
         "ls_model_name": "gpt-5.4-mini"
     }
 )
-def shopping_cart_agent(state) -> dict:
-    
-    template = prompt_template_config("api/agents/prompts/shopping_cart_agent.yaml", "shopping_cart_agent")
+def shopping_cart_agent(state, models=["gpt-5.4-mini", "groq/llama-3.3-70b-versatile"]) -> dict:
 
-    prompt = template.render(
-        user_id=state.user_id,
-        cart_id=state.cart_id
-    )
+    prompts = {}
+    for model in models:
+        prompts[model] = prompt_template_config("api/agents/prompts/shopping_cart_agent.yaml", model).render(
+            user_id=state.user_id,
+            cart_id=state.cart_id
+        )
 
-    llm = ChatOpenAI(
-        model="gpt-5.4-mini",
-        reasoning_effort="low",
-        use_responses_api=True
-    )
-    llm_with_tools = llm.bind_tools(
-        [get_shopping_cart, remove_from_cart, add_to_shopping_cart, FinalAgentResponse],
-        tool_choice="required"
-    )
+    if state.shopping_cart_agent.iteration == MAX_ITERATIONS_SHOPPING_CART:
+        tools = [FinalAgentResponse]
+    else:
+        tools = [get_shopping_cart, remove_from_cart, add_to_shopping_cart, FinalAgentResponse]
 
-    response = llm_with_tools.invoke(
-        [
-            SystemMessage(content=prompt),
-            AIMessage(content=state.coordinator_agent.next_agent_task),
-            *state.shopping_cart_agent.messages
-        ]
-    )
+    for model in models:
+        try:
+            llm = ChatLiteLLM(
+                model=model,
+                reasoning_effort="medium",
+                use_responses_api=True
+            )
+            llm_with_tools = llm.bind_tools(
+                tools,
+                tool_choice="required"
+            )
 
-    current_run = get_current_run_tree()
-    if current_run:
-        current_run.metadata["usage_metadata"] = {
-            "input_tokens": response.usage_metadata["input_tokens"],
-            "output_tokens": response.usage_metadata["output_tokens"],
-            "total_tokens": response.usage_metadata["total_tokens"],
-        }
+            response = llm_with_tools.invoke(
+                [
+                    SystemMessage(content=prompts[model]),
+                    AIMessage(content=state.coordinator_agent.next_agent_task),
+                    *state.shopping_cart_agent.messages
+                ]
+            )
+            break
+        except Exception as e:
+            print(f"Error with model {model}: {e}")
+            continue
 
     postprocessed_response = postprocess_response(response, "FinalAgentResponse", "shopping_cart_agent")
 
@@ -171,37 +184,40 @@ def shopping_cart_agent(state) -> dict:
         "ls_model_name": "gpt-5.4-mini"
     }
 )
-def warehouse_manager_agent(state) -> dict:
-    
-    template = prompt_template_config("api/agents/prompts/warehouse_manager_agent.yaml", "warehouse_manager_agent")
+def warehouse_manager_agent(state, models=["gpt-5.4-mini", "groq/llama-3.3-70b-versatile"]) -> dict:
 
-    prompt = template.render()
+    prompts = {}
+    for model in models:
+        prompts[model] = prompt_template_config("api/agents/prompts/warehouse_manager_agent.yaml", model).render()
 
-    llm = ChatOpenAI(
-        model="gpt-5.4-mini",
-        reasoning_effort="low",
-        use_responses_api=True
-    )
-    llm_with_tools = llm.bind_tools(
-        [check_warehouse_availability, reserve_warehouse_items, FinalAgentResponse],
-        tool_choice="required"
-    )
+    if state.warehouse_manager_agent.iteration == MAX_ITERATIONS_WAREHOUSE_MANAGER:
+        tools = [FinalAgentResponse]
+    else:
+        tools = [check_warehouse_availability, reserve_warehouse_items, FinalAgentResponse]
 
-    response = llm_with_tools.invoke(
-        [
-            SystemMessage(content=prompt),
-            AIMessage(content=state.coordinator_agent.next_agent_task),
-            *state.warehouse_manager_agent.messages
-        ]
-    )
+    for model in models:
+        try:
+            llm = ChatLiteLLM(
+                model=model,
+                reasoning_effort="medium",
+                use_responses_api=True
+            )
+            llm_with_tools = llm.bind_tools(
+                tools,
+                tool_choice="required"
+            )
 
-    current_run = get_current_run_tree()
-    if current_run:
-        current_run.metadata["usage_metadata"] = {
-            "input_tokens": response.usage_metadata["input_tokens"],
-            "output_tokens": response.usage_metadata["output_tokens"],
-            "total_tokens": response.usage_metadata["total_tokens"],
-        }
+            response = llm_with_tools.invoke(
+                [
+                    SystemMessage(content=prompts[model]),
+                    AIMessage(content=state.coordinator_agent.next_agent_task),
+                    *state.warehouse_manager_agent.messages
+                ]
+            )
+            break
+        except Exception as e:
+            print(f"Error with model {model}: {e}")
+            continue
 
     postprocessed_response = postprocess_response(response, "FinalAgentResponse", "warehouse_manager_agent")
 
@@ -230,36 +246,42 @@ def warehouse_manager_agent(state) -> dict:
         "ls_model_name": "gpt-5.4-mini"
     }
 )
-def coordinator_agent(state) -> dict:
-    
-    template = prompt_template_config("api/agents/prompts/coordinator_agent.yaml", "coordinator_agent")
+def coordinator_agent(state, models=["gpt-5.4-mini", "groq/llama-3.3-70b-versatile"]) -> dict:
 
-    prompt = template.render()
+    prompts = {}
+    for model in models:
+        prompts[model] = prompt_template_config("api/agents/prompts/coordinator_agent.yaml", model).render()
 
-    llm = ChatOpenAI(
-        model="gpt-5.4-mini",
-        reasoning_effort="medium",
-        use_responses_api=True
-    )
-    llm_with_tools = llm.bind_tools(
-        [FinalAgentResponse, Plan],
-        tool_choice="required"
-    )
+    if state.coordinator_agent.iteration == MAX_ITERATIONS_COORDINATOR:
+        tools = [FinalAgentResponse]
+    else:
+        tools = [Plan, FinalAgentResponse]
 
-    response = llm_with_tools.invoke(
-        [
-            SystemMessage(content=prompt),
-            *state.messages
-        ]
-    )
+    for model in models:
+        try:
+            llm = ChatLiteLLM(
+                model=model,
+                reasoning_effort="medium",
+                use_responses_api=True
+            )
+            llm_with_tools = llm.bind_tools(
+                tools,
+                tool_choice="required"
+            )
+
+            response = llm_with_tools.invoke(
+                [
+                    SystemMessage(content=prompts[model]),
+                    *state.messages
+                ]
+            )
+            break
+        except Exception as e:
+            print(f"Error with model {model}: {e}")
+            continue
 
     current_run = get_current_run_tree()
     if current_run:
-        current_run.metadata["usage_metadata"] = {
-            "input_tokens": response.usage_metadata["input_tokens"],
-            "output_tokens": response.usage_metadata["output_tokens"],
-            "total_tokens": response.usage_metadata["total_tokens"],
-        }
         trace_id = str(current_run.trace_id)
     else:
         trace_id = ""
@@ -274,7 +296,6 @@ def coordinator_agent(state) -> dict:
             next_agent = response.tool_calls[0].get("args").get("next_agent")
             next_agent_task = response.tool_calls[0].get("args").get("next_agent_task")
             response = AIMessage(content=f"[coordinator_agent decision] Next agent: {next_agent}. Next agent task: {next_agent_task}")
-    
         else:
             postprocessed_response = postprocess_response(response, "FinalAgentResponse")
 
