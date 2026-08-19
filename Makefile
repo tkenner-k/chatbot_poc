@@ -12,3 +12,7 @@ run-evals-retriever:
 run-evals-retriever-extended:
 	uv sync
 	cd apps/api/src && PYTHONPATH=${PWD}/apps/api:${PWD}/apps/api/src:$$PYTHONPATH:${PWD} uv run --env-file ../../../.env python -m evals.eval_retriever_extended
+
+run-evals-coordinator-agent:
+	uv sync
+	cd apps/api/src && PYTHONPATH=${PWD}/apps/api:${PWD}/apps/api/src:$$PYTHONPATH:${PWD} uv run --env-file ../../../.env python -m evals.eval_coordinator_agent	
