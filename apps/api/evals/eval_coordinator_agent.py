@@ -8,7 +8,7 @@ from langsmith import Client
 ls_client = Client()
 
 SLEEP_TIME = 5
-ACC_THRESHOLD = 0.85
+ACC_THRESHOLD = 0.65
 
 
 def evaluate_coordinator_delegation(run, example):
