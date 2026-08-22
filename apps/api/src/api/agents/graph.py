@@ -12,13 +12,9 @@ from api.agents.tools import (
     check_warehouse_availability, 
     reserve_warehouse_items
 )
+
 from api.agents.guardrails import redact_product_id
-from api.agents.agents import (
-    MAX_ITERATIONS_PRODUCT_QNA,
-    MAX_ITERATIONS_SHOPPING_CART, 
-    MAX_ITERATIONS_WAREHOUSE_MANAGER, 
-    MAX_ITERATIONS_COORDINATOR
-)
+
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
@@ -26,10 +22,10 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langgraph.checkpoint.postgres import PostgresSaver
 import json
+
 from langgraph.types import Command, interrupt
 from langchain_core.messages import AIMessage
 from typing import Literal
-from api.core.config import config
 
 
 class AgentProperties(BaseModel):
@@ -95,13 +91,14 @@ def hitl_add_to_cart(state) -> Command[Literal["shopping_cart_agent_tool_node", 
             goto = END
         )
 
+
 ### Edges
 
 def product_qna_agent_tool_router(state) -> str:
 
     if state.product_qna_agent.final_answer:
         return "end"
-    elif state.product_qna_agent.iteration > MAX_ITERATIONS_PRODUCT_QNA:
+    elif state.product_qna_agent.iteration > 5:
         return "end"
     elif len(state.messages[-1].tool_calls) > 0:
         return "tools"
@@ -119,7 +116,7 @@ def shopping_cart_agent_tool_router(state) -> str:
 
     if state.shopping_cart_agent.final_answer:
         return "end"
-    elif state.shopping_cart_agent.iteration > MAX_ITERATIONS_SHOPPING_CART:
+    elif state.shopping_cart_agent.iteration > 4:
         return "end"
     elif len(state.shopping_cart_agent.messages[-1].tool_calls) > 0:
         if add_to_cart_tool_call:
@@ -134,7 +131,7 @@ def warehouse_manager_agent_tool_router(state) -> str:
 
     if state.warehouse_manager_agent.final_answer:
         return "end"
-    elif state.warehouse_manager_agent.iteration > MAX_ITERATIONS_WAREHOUSE_MANAGER:
+    elif state.warehouse_manager_agent.iteration > 4:
         return "end"
     elif len(state.warehouse_manager_agent.messages[-1].tool_calls) > 0:
         return "tools"
@@ -146,7 +143,7 @@ def coordinator_agent_edge(state) -> str:
 
     if state.coordinator_agent.final_answer:
         return "end"
-    elif state.coordinator_agent.iteration > MAX_ITERATIONS_COORDINATOR:
+    elif state.coordinator_agent.iteration > 6:
         return "end"
     elif state.coordinator_agent.next_agent == "product_qna_agent":
         return "product_qna_agent"
@@ -156,7 +153,6 @@ def coordinator_agent_edge(state) -> str:
         return "warehouse_manager_agent"
     else:
         return "end"
-
 
 ### Workflow
 
@@ -255,7 +251,6 @@ workflow.add_edge("shopping_cart_agent_tool_node", "shopping_cart_agent")
 workflow.add_edge("warehouse_manager_agent_tool_node", "warehouse_manager_agent")
 workflow.add_edge("redact_product_id", END)
 
-
 ### Agent Execution
 
 def agent_stream_wrapper(question, thread_id, mode) -> dict:
@@ -267,7 +262,7 @@ def agent_stream_wrapper(question, thread_id, mode) -> dict:
 
         def _is_node_start(chunk):
             return chunk[1].get("type") == "task"
-
+        
         def _is_interrupt(chunk):
             return len(chunk[1].get("payload", {}).get("interrupts", [])) > 0
 
@@ -311,13 +306,7 @@ def agent_stream_wrapper(question, thread_id, mode) -> dict:
         else:
             return False
 
-    qdrant_client = QdrantClient(
-        url=config.QDRANT_URL,
-        api_key=config.QDRANT_API_KEY,
-        timeout=60 #include this so we do not get timeout errors when we upsert pointstructs/payload.vectors
-        )
-   
-   #qdrant_client = QdrantClient(url="http://qdrant:6333")
+    qdrant_client = QdrantClient(url="http://qdrant:6333")
 
     if mode == "initialise":
         initial_state = {
@@ -355,7 +344,7 @@ def agent_stream_wrapper(question, thread_id, mode) -> dict:
     }
 
     with PostgresSaver.from_conn_string(
-        f"postgresql://{config.SUPABASE_LANGGRAPH_USER}:{config.SUPABASE_LANGGRAPH_PASSWORD}@{config.SUPABASE_URL}:5432/postgres?sslmode=require&options=-csearch_path%3Dlanggraph"
+        "postgresql://langgraph_user:langgraph_password@postgres:5432/langgraph_db"
     ) as checkpointer:
 
         graph = workflow.compile(

@@ -9,8 +9,6 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import numpy as np
 
-from api.core.config import config
-
 
 @traceable(
     name="embed_query",
@@ -82,7 +80,7 @@ def retrieve_items_data(query, qdrant_client, k=5, hybrid=True):
 
     for result in results.points:
         retrieved_context_ids.append(result.payload["parent_asin"])
-        retrieved_context.append(result.payload["description"])
+        retrieved_context.append(result.payload["preprocessed_description"])
         similarity_scores.append(result.score)
         retrieved_context_ratings.append(result.payload["average_rating"])
 
@@ -161,11 +159,7 @@ Returns:
     average rating.
     """
 
-    qdrant_client = QdrantClient(
-        url=config.QDRANT_URL,
-        api_key=config.QDRANT_API_KEY,
-        timeout=60
-    )
+    qdrant_client = QdrantClient(url="http://qdrant:6333")
 
     retrieved_context = retrieve_items_data(
         query,
@@ -179,12 +173,13 @@ Returns:
     return formatted_context
 
 
-### Reviews metadata retrieval tool
+### Items metadata retrieval tool.  
 
 @traceable(
     name="retrieve_prefiltered_reviews_data",
     run_type="retriever"
 )
+
 def retrieve_prefiltered_reviews_data(query, parent_asins, qdrant_client, k=5):
 
     query_embedding = get_embedding(query)
@@ -254,11 +249,7 @@ def get_formatted_reviews_context(query: str, parent_asins: list[str], top_k: in
         A string of the top k context chunks with IDs prepending each chunk, each representing a review for a given inventory item for a given query.
     """
 
-    qdrant_client = QdrantClient(
-        url=config.QDRANT_URL,
-        api_key=config.QDRANT_API_KEY,
-        timeout=60
-    )
+    qdrant_client = QdrantClient(url="http://qdrant:6333")
 
     retrieved_context = retrieve_prefiltered_reviews_data(
         query,
@@ -270,8 +261,7 @@ def get_formatted_reviews_context(query: str, parent_asins: list[str], top_k: in
 
     return formatted_context
 
-
-### Shopping Cart Tools ###
+  ### Shopping Cart Tools ###
 
 # Add to Shopping Cart Tool
 
@@ -290,11 +280,11 @@ def add_to_shopping_cart(items: list[dict], user_id: str, cart_id: str) -> str:
     """
 
     conn = psycopg2.connect(
-        host=config.SUPABASE_URL,
+        host="postgres",
         port=5432,
-        database="postgres",
-        user=config.SUPABASE_TOOLS_USER,
-        password=config.SUPABASE_TOOLS_PASSWORD
+        database="tools_database",
+        user="tools_user",
+        password="tools_user_password"
     )
     conn.autocommit = True
 
@@ -304,11 +294,7 @@ def add_to_shopping_cart(items: list[dict], user_id: str, cart_id: str) -> str:
             product_id = item['product_id']
             quantity = item['quantity']
 
-            qdrant_client = QdrantClient(
-                url=config.QDRANT_URL,
-                api_key=config.QDRANT_API_KEY,
-                timeout=60
-            )
+            qdrant_client = QdrantClient(url="http://qdrant:6333")
 
             dummy_vector = np.zeros(1536).tolist()
             payload = qdrant_client.query_points(
@@ -374,8 +360,7 @@ def add_to_shopping_cart(items: list[dict], user_id: str, cart_id: str) -> str:
                 
                 cursor.execute(insert_query, (user_id, cart_id, product_id, price, quantity, currency, product_image_url))
             
-    return f"Added {items} to the shopping cart."
-
+    return f"Added {items} to the shopping cart."  
 
 # Get Shopping Cart Tool
 
@@ -394,11 +379,11 @@ def get_shopping_cart(user_id: str, cart_id: str) -> list[dict]:
     """
     
     conn = psycopg2.connect(
-        host=config.SUPABASE_URL,
+        host="postgres",
         port=5432,
-        database="postgres",
-        user=config.SUPABASE_TOOLS_USER,
-        password=config.SUPABASE_TOOLS_PASSWORD
+        database="tools_database",
+        user="tools_user",
+        password="tools_user_password"
     )
     conn.autocommit = True
 
@@ -432,11 +417,11 @@ def get_shopping_cart_for_sse(user_id: str, cart_id: str) -> list[dict]:
     """
     
     conn = psycopg2.connect(
-        host=config.SUPABASE_URL,
+        host="postgres",
         port=5432,
-        database="postgres",
-        user=config.SUPABASE_TOOLS_USER,
-        password=config.SUPABASE_TOOLS_PASSWORD
+        database="tools_database",
+        user="tools_user",
+        password="tools_user_password"
     )
     conn.autocommit = True
 
@@ -474,11 +459,11 @@ def remove_from_cart(product_id: str, user_id: str, cart_id: str) -> str:
     """
     
     conn = psycopg2.connect(
-        host=config.SUPABASE_URL,
+        host="postgres",
         port=5432,
-        database="postgres",
-        user=config.SUPABASE_TOOLS_USER,
-        password=config.SUPABASE_TOOLS_PASSWORD
+        database="tools_database",
+        user="tools_user",
+        password="tools_user_password"
     )
     conn.autocommit = True
 
@@ -515,11 +500,11 @@ def check_warehouse_availability(items: list[dict]) -> dict:
     """
     
     conn = psycopg2.connect(
-        host=config.SUPABASE_URL,
+        host="postgres",
         port=5432,
-        database="postgres",
-        user=config.SUPABASE_TOOLS_USER,
-        password=config.SUPABASE_TOOLS_PASSWORD
+        database="tools_database",
+        user="tools_user",
+        password="tools_user_password"
     )
     
     try:
@@ -657,11 +642,11 @@ def reserve_warehouse_items(reservations: list[dict]) -> dict:
     """
     
     conn = psycopg2.connect(
-        host=config.SUPABASE_URL,
+        host="postgres",
         port=5432,
-        database="postgres",
-        user=config.SUPABASE_TOOLS_USER,
-        password=config.SUPABASE_TOOLS_PASSWORD
+        database="tools_database",
+        user="tools_user",
+        password="tools_user_password"
     )
     conn.autocommit = False  # Use transaction
     
