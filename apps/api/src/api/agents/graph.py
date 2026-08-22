@@ -29,6 +29,7 @@ import json
 from langgraph.types import Command, interrupt
 from langchain_core.messages import AIMessage
 from typing import Literal
+from api.core.config import config
 
 
 class AgentProperties(BaseModel):
@@ -310,7 +311,13 @@ def agent_stream_wrapper(question, thread_id, mode) -> dict:
         else:
             return False
 
-    qdrant_client = QdrantClient(url="http://qdrant:6333")
+    qdrant_client = QdrantClient(
+        url=config.QDRANT_URL,
+        api_key=config.QDRANT_API_KEY,
+        timeout=60 #include this so we do not get timeout errors when we upsert pointstructs/payload.vectors
+        )
+   
+   #qdrant_client = QdrantClient(url="http://qdrant:6333")
 
     if mode == "initialise":
         initial_state = {
@@ -348,7 +355,7 @@ def agent_stream_wrapper(question, thread_id, mode) -> dict:
     }
 
     with PostgresSaver.from_conn_string(
-        "postgresql://langgraph_user:langgraph_password@postgres:5432/langgraph_db"
+        f"postgresql://{config.SUPABASE_LANGGRAPH_USER}:{config.SUPABASE_LANGGRAPH_PASSWORD}@{config.SUPABASE_URL}:5432/postgres?sslmode=require&options=-csearch_path%3Dlanggraph"
     ) as checkpointer:
 
         graph = workflow.compile(
