@@ -11,7 +11,7 @@ class Config(BaseSettings):
     SUPABASE_LANGGRAPH_PASSWORD: str = ""
     SUPABASE_TOOLS_USER: str = ""
     SUPABASE_TOOLS_PASSWORD: str = ""
-    #CO_API_KEY: str = ""
+    CO_API_KEY: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 
