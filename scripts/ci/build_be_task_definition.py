@@ -81,11 +81,11 @@ def create_task_definition():
                     {
                         "name": "SUPABASE_TOOLS_PASSWORD",
                         "valueFrom": f"arn:aws:secretsmanager:us-east-2:{aws_account_id}:secret:amazon-assistant/SUPABASE_TOOLS_PASSWORD-7OhLpa"
+                    },
+                    {
+                        "name": "CO_API_KEY",
+                        "valueFrom": f"arn:aws:secretsmanager:us-east-2:{aws_account_id}:secret:amazon-assistant/CO_API_KEY-azgm9n"
                     }
-                    # {
-                    #     "name": "CO_API_KEY",
-                    #     "valueFrom": f"arn:aws:secretsmanager:us-east-2:{aws_account_id}:secret:amazon-assistant/co-api-key-25zpyK"
-                    # }
                 ],
                 "logConfiguration": {
                     "logDriver": "awslogs",
